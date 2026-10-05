@@ -1,0 +1,28 @@
+name: Tests and packages
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: python -m pip install -e . build
+      - run: python -m unittest discover -s tests -v
+      - run: node --version
+      - run: node --test tests/*.test.mjs
+      - run: python -m build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: roomping-python-${{ matrix.python }}
+          path: dist/*
