@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "roomping"
-version = "0.1.0a3"
+version = "0.1.0a4"
 description = "Measure and compare PC-to-phone LAN HTTP performance at exact floorplan points"
 readme = "README.en.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = ["qrcode>=8.2,<9"]
 keywords = ["wifi", "lan", "network", "speed-test", "floorplan", "smartphone"]
-classifiers = ["Development Status :: 3 - Alpha", "Programming Language :: Python :: 3", "Operating System :: OS Independent"]
+classifiers = ["Development Status :: 3 - Alpha", "Natural Language :: English", "Natural Language :: Japanese", "Programming Language :: Python :: 3", "Operating System :: OS Independent"]
 
 [project.urls]
 Homepage = "https://github.com/anpanmanj987-hub/RoomPing"

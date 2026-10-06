@@ -1,17 +1,38 @@
 import {LIMITS, emptyDataset, validateDataset, appendMeasurement, latest, median, transferRate, comparePoint, toJSON, toCSV} from './metrics.mjs';
 import {MeasurementClient} from './measurement.mjs';
+import {getLanguage, pickLanguage, setLanguage, t} from './i18n.mjs';
 
 const $ = id => document.getElementById(id);
+function savedLanguage() { try { return localStorage.getItem('roomping-lang'); } catch { return null; } }
+setLanguage(pickLanguage({search: location.search || '', saved: savedLanguage(),
+  languages: navigator.languages?.length ? navigator.languages : [navigator.language || '']}));
 const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
 const client = new MeasurementClient({token});
 let data = emptyDataset(), selectedPoint = '', selectedCondition = data.conditions[0].id;
 let controller = null, connected = false, pendingImport = null;
-const phaseNames = {warmup:'接続を準備', latency:'HTTP 往復応答', download:'PC → スマートフォン', upload:'スマートフォン → PC'};
+let lastMessage = {key: 'join_from_url', params: {}, error: false}, connectionKey = 'checking_connection';
 function uid(prefix) { const bytes = crypto.getRandomValues(new Uint8Array(10)); return prefix + '_' + [...bytes].map(b => b.toString(16).padStart(2,'0')).join(''); }
-function message(text, error = false) { $('status').textContent = text; $('status').classList.toggle('error', error); }
+// Messages are kept as keys so switching language can redraw the current one.
+function message(key, params = {}, error = false) { lastMessage = {key, params, error}; showMessage(); }
+function showMessage() { $('status').textContent = t(lastMessage.key, lastMessage.params); $('status').classList.toggle('error', lastMessage.error); }
+function showConnection() { $('connection').textContent = t(connectionKey); }
+function applyText() {
+  document.documentElement.lang = getLanguage();
+  document.title = t('page_title');
+  for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n);
+  for (const element of document.querySelectorAll('[data-i18n-attr]')) {
+    for (const pair of element.dataset.i18nAttr.split(';')) {
+      const [attribute, name] = pair.split(':');
+      element.setAttribute(attribute, t(name));
+    }
+  }
+  $('lang').textContent = t('switch_language');
+  $('lang').setAttribute('lang', getLanguage() === 'ja' ? 'en' : 'ja');
+  showMessage(); showConnection();
+}
 function commitDataset(candidate) {
-  try { data = validateDataset(candidate); message('記録を更新しました。'); return true; }
-  catch (error) { render(); message(`${error.message}。現在の記録は保持しています。`, true); return false; }
+  try { data = validateDataset(candidate); message('record_updated'); return true; }
+  catch (error) { render(); message('kept_current', {error: error.message}, true); return false; }
 }
 function point() { return data.points.find(p => p.id === selectedPoint); }
 function condition() { return data.conditions.find(c => c.id === selectedCondition); }
@@ -26,8 +47,8 @@ function setBusy(busy) {
 }
 function render() {
   const p = point();
-  $('point-count').textContent = `${data.points.length} 地点`;
-  $('measurement-count').textContent = `${data.measurements.length} 回の実測`;
+  $('point-count').textContent = t('spot_count', {n: data.points.length});
+  $('measurement-count').textContent = t('measurement_count', {n: data.measurements.length});
   $('map').style.aspectRatio = `${data.floorplan.width} / ${data.floorplan.height}`;
   $('map').classList.toggle('blank', !data.floorplan.image);
   $('floorplan-image').hidden = !data.floorplan.image;
@@ -40,14 +61,14 @@ function render() {
     marker.className = `marker${item.id === selectedPoint ? ' selected' : ''}${measured ? '' : ' pending'}`;
     marker.style.left = `${item.x * 100}%`; marker.style.top = `${item.y * 100}%`;
     marker.textContent = String(i + 1); marker.title = item.label;
-    marker.setAttribute('aria-label', `${item.label}を選択${measured ? '、実測あり' : '、未測定'}`);
+    marker.setAttribute('aria-label', t(measured ? 'marker_measured' : 'marker_pending', {label: item.label}));
     marker.addEventListener('click', event => { event.stopPropagation(); if (!client.busy) { selectedPoint = item.id; render(); } });
     $('markers').append(marker);
   });
-  $('point-select').replaceChildren(); option($('point-select'), '', '地点を選ぶ');
+  $('point-select').replaceChildren(); option($('point-select'), '', t('choose_spot'));
   data.points.forEach(item => option($('point-select'), item.id, item.label)); $('point-select').value = selectedPoint;
   $('point-name').value = p?.label || '';
-  $('coordinates').textContent = p ? `位置 x ${n(p.x * 100)}% / y ${n(p.y * 100)}%` : 'まだ地点を選んでいません';
+  $('coordinates').textContent = p ? t('position', {x: n(p.x * 100), y: n(p.y * 100)}) : t('no_spot');
   const before = $('before-condition').value, after = $('after-condition').value;
   for (const id of ['condition-select','before-condition','after-condition']) {
     $(id).replaceChildren(); data.conditions.forEach(c => option($(id), c.id, c.name));
@@ -68,20 +89,23 @@ function renderResults() {
   $('results').replaceChildren();
   const records = data.conditions.map(c => ({condition:c, measurement:latest(data, selectedPoint, c.id)})).filter(r => r.measurement);
   $('results-empty').hidden = records.length > 0;
-  $('results-empty').textContent = point() ? 'この地点はまだ測定していません。条件を選んで測定してください。' : '地点を選択すると、条件ごとの実測結果を表示します。';
+  $('results-empty').textContent = point() ? t('spot_unmeasured') : t('select_spot');
   const grid = document.createElement('div'); grid.className = 'result-grid';
+  const locale = getLanguage() === 'ja' ? 'ja-JP' : 'en-US';
   for (const {condition:c, measurement:m} of records) {
     const card = document.createElement('article'); card.className = 'result-item';
     const title = document.createElement('h3'); title.textContent = `${point().label} · ${c.name}`; card.append(title);
-    for (const [label,value,unit] of [['HTTP 往復応答 (中央値)',median(m.latencyMs),'ms'],['PC → スマートフォン',transferRate(m.download),'Mbps'],['スマートフォン → PC',transferRate(m.upload),'Mbps']]) {
+    for (const [label,value,unit] of [[t('rtt_median'),median(m.latencyMs),'ms'],[t('phase_download'),transferRate(m.download),'Mbps'],[t('phase_upload'),transferRate(m.upload),'Mbps']]) {
       const row = document.createElement('div'); row.className = 'metric-row';
       const l = document.createElement('span'); l.textContent = label;
       const strong = document.createElement('strong'); strong.textContent = n(value);
       const small = document.createElement('small'); small.textContent = unit; strong.append(small); row.append(l,strong); card.append(row);
     }
-    const detail = document.createElement('p'); detail.textContent = `${new Date(m.timestamp).toLocaleString('ja-JP')} · 往復 ${m.latencyMs.length} 回 / 転送各 ${m.download.length} 回\n${c.notes}`; card.append(detail);
+    const detail = document.createElement('p');
+    detail.textContent = t('result_detail', {time: new Date(m.timestamp).toLocaleString(locale), rtt: m.latencyMs.length, transfers: m.download.length}) + `\n${c.notes}`;
+    card.append(detail);
     if ([...m.download,...m.upload].some(s => s.durationMs < 250)) {
-      const warning = document.createElement('p'); warning.textContent = '短い転送サンプルを含みます。速い LAN では 16 MiB で再測定すると比較しやすくなります。'; card.append(warning);
+      const warning = document.createElement('p'); warning.textContent = t('short_samples'); card.append(warning);
     }
     grid.append(card);
   }
@@ -90,9 +114,11 @@ function renderResults() {
 function renderComparison() {
   const compared = comparePoint(data, selectedPoint, $('before-condition').value, $('after-condition').value);
   const signed = value => `${value >= 0 ? '+' : ''}${n(value)}`;
-  $('comparison-result').textContent = compared ? `変更後 − 変更前: ダウンロード ${signed(compared.downloadDelta)} Mbps / アップロード ${signed(compared.uploadDelta)} Mbps / 往復応答 ${signed(compared.latencyDelta)} ms。各条件の最新実測を比較しています。` : '両方の条件で同じ地点を測ると差を表示します。';
+  $('comparison-result').textContent = compared
+    ? t('comparison', {down: signed(compared.downloadDelta), up: signed(compared.uploadDelta), rtt: signed(compared.latencyDelta)})
+    : t('comparison_hint');
 }
-function traffic() { $('traffic').textContent = `転送量: 合計 ${Number($('transfer-size').value) * Number($('repeats').value) * 2 / 1048576} MiB。往復応答は 7 回測定します。`; }
+function traffic() { $('traffic').textContent = t('traffic', {total: Number($('transfer-size').value) * Number($('repeats').value) * 2 / 1048576}); }
 function exportFile(name, contents, type) {
   const link = document.createElement('a'), url = URL.createObjectURL(new Blob([contents], {type}));
   link.href = url; link.download = name; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -100,20 +126,25 @@ function exportFile(name, contents, type) {
 async function decodeImage(image, width, height) {
   const img = new Image(); img.src = image; await img.decode();
   if (!img.naturalWidth || img.naturalWidth > 8192 || img.naturalHeight > 8192 || img.naturalWidth * img.naturalHeight > LIMITS.pixels ||
-    (width !== undefined && (img.naturalWidth !== width || img.naturalHeight !== height))) throw new Error('画像の実寸または画素数が不正です');
+    (width !== undefined && (img.naturalWidth !== width || img.naturalHeight !== height))) throw new Error(t('bad_image_size'));
   return img;
 }
 function replaceFloorplan(floorplan) {
-  if (data.points.length && !window.confirm('間取りを変えると地点と測定記録を消去します。必要な記録は JSON で保存してください。変更しますか？')) return;
-  data = validateDataset({...data, floorplan, points:[], measurements:[]}); selectedPoint = ''; render(); message('間取りを設定しました。現在地をタップしてください。');
+  if (data.points.length && !window.confirm(t('confirm_floorplan'))) return;
+  data = validateDataset({...data, floorplan, points:[], measurements:[]}); selectedPoint = ''; render(); message('floorplan_set');
 }
+$('lang').addEventListener('click', () => {
+  setLanguage(getLanguage() === 'ja' ? 'en' : 'ja');
+  try { localStorage.setItem('roomping-lang', getLanguage()); } catch {}
+  applyText(); render(); traffic();
+});
 $('map').addEventListener('click', event => {
   if (client.busy) return;
-  if (data.points.length >= LIMITS.points) return message('地点数の上限 (500) に達しました。', true);
+  if (data.points.length >= LIMITS.points) return message('spot_limit', {}, true);
   const rect = $('map').getBoundingClientRect();
   const x = Math.max(0,Math.min(1,(event.clientX - rect.left) / rect.width));
   const y = Math.max(0,Math.min(1,(event.clientY - rect.top) / rect.height));
-  const created = {id:uid('point'),label:`地点 ${data.points.length + 1}`,x,y};
+  const created = {id:uid('point'),label:t('new_spot', {n: data.points.length + 1}),x,y};
   if (commitDataset({...data, points:[...data.points,created]})) { selectedPoint = created.id; render(); }
 });
 $('point-select').addEventListener('change', () => { selectedPoint = $('point-select').value; render(); });
@@ -124,9 +155,9 @@ $('point-name').addEventListener('change', () => {
 });
 $('condition-select').addEventListener('change', () => { selectedCondition = $('condition-select').value; render(); });
 $('add-condition').addEventListener('click', () => {
-  const name = $('condition-name').value.trim(); if (!name) return message('条件名を入力してください。', true);
-  if (data.conditions.length >= LIMITS.conditions) return message('条件数の上限 (50) に達しました。',true);
-  if (data.conditions.some(c => c.name === name)) return message('同じ名前の条件がすでにあります。',true);
+  const name = $('condition-name').value.trim(); if (!name) return message('enter_condition', {}, true);
+  if (data.conditions.length >= LIMITS.conditions) return message('condition_limit', {}, true);
+  if (data.conditions.some(c => c.name === name)) return message('condition_exists', {}, true);
   const created = {id:uid('condition'),name,notes:''};
   if (commitDataset({...data,conditions:[...data.conditions,created]})) { selectedCondition = created.id; $('condition-name').value = ''; render(); }
 });
@@ -137,63 +168,63 @@ for (const id of ['before-condition','after-condition']) $(id).addEventListener(
 for (const id of ['transfer-size','repeats']) $(id).addEventListener('change',traffic);
 $('measure').addEventListener('click', async () => {
   if (!point() || !condition() || client.busy) return;
-  if (data.measurements.length >= LIMITS.measurements) return message('測定件数の上限 (5000) に達しました。',true);
+  if (data.measurements.length >= LIMITS.measurements) return message('measurement_limit', {}, true);
   const pointId = selectedPoint, conditionId = selectedCondition;
-  controller = new AbortController(); setBusy(true); message('測定中です。端末を動かさず、画面を開いたままにしてください。');
+  controller = new AbortController(); setBusy(true); message('measuring');
   try {
     const results = await client.measure({bytes:Number($('transfer-size').value),repeats:Number($('repeats').value),signal:controller.signal,
-      onProgress: p => { $('progress-text').textContent = `${phaseNames[p.phase]} ${p.current}/${p.total}`; }});
-    if (controller.signal.aborted) throw new Error('測定を中断しました');
+      onProgress: p => { $('progress-text').textContent = t('progress', {phase: t(`phase_${p.phase}`), current: p.current, total: p.total}); }});
+    if (controller.signal.aborted) throw new Error(t('cancelled'));
     data = appendMeasurement(data,{id:uid('measurement'),pointId,conditionId,timestamp:new Date().toISOString(),...results,device:navigator.userAgent.slice(0,300),mode:'measured'});
-    message('測定を記録しました。別の地点や条件でも測って比較できます。');
+    message('recorded');
   } catch (error) {
-    message(`測定を記録しませんでした: ${error.message || '通信に失敗しました'}。既存の結果は保持しています。`,true);
+    message('not_recorded', {error: error.message || t('request_failed')}, true);
   } finally { controller = null; render(); }
 });
-$('cancel').addEventListener('click', () => controller?.abort(new Error('測定を中断しました')));
-document.addEventListener('visibilitychange', () => { if (document.hidden) controller?.abort(new Error('画面が非表示になったため測定を中断しました')); });
+$('cancel').addEventListener('click', () => controller?.abort(new Error(t('cancelled'))));
+document.addEventListener('visibilitychange', () => { if (document.hidden) controller?.abort(new Error(t('hidden_cancelled'))); });
 $('floorplan-file').addEventListener('change',async () => {
   const file = $('floorplan-file').files[0]; if (!file) return;
   try {
-    if (file.size > LIMITS.imageBytes || !['image/png','image/jpeg','image/webp'].includes(file.type)) throw new Error('PNG/JPEG/WebP、5 MiB 以下の画像を選んでください');
-    const image = await new Promise((resolve,reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(new Error('画像を読めません')); r.readAsDataURL(file); });
+    if (file.size > LIMITS.imageBytes || !['image/png','image/jpeg','image/webp'].includes(file.type)) throw new Error(t('image_choice'));
+    const image = await new Promise((resolve,reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(new Error(t('image_unreadable'))); r.readAsDataURL(file); });
     const img = await decodeImage(image);
     replaceFloorplan({name:file.name.slice(0,200),image,width:img.naturalWidth,height:img.naturalHeight});
-  } catch (error) { message(error.message,true); } finally { $('floorplan-file').value = ''; }
+  } catch (error) { message('kept_current', {error: error.message}, true); } finally { $('floorplan-file').value = ''; }
 });
 $('blank-plan').addEventListener('click', () => replaceFloorplan(emptyDataset().floorplan));
 $('export-json').addEventListener('click', () => exportFile('roomping.json',toJSON(data),'application/json'));
-$('export-csv').addEventListener('click', () => exportFile('roomping.csv','\uFEFF' + toCSV(data),'text/csv;charset=utf-8'));
+$('export-csv').addEventListener('click', () => exportFile('roomping.csv','﻿' + toCSV(data),'text/csv;charset=utf-8'));
 $('import-json').addEventListener('change',async () => {
   const file = $('import-json').files[0]; if (!file) return;
   try {
-    if (file.size > LIMITS.jsonBytes) throw new Error('JSON は 12 MiB 以下にしてください');
+    if (file.size > LIMITS.jsonBytes) throw new Error(t('json_limit'));
     const checked = validateDataset(JSON.parse(await file.text()));
     if (checked.floorplan.image) await decodeImage(checked.floorplan.image,checked.floorplan.width,checked.floorplan.height);
     pendingImport = checked;
-    $('import-summary').textContent = `${file.name}: ${checked.points.length} 地点 / ${checked.conditions.length} 条件 / ${checked.measurements.length} 回の実測`;
-    $('import-review').hidden = false; $('import-review').scrollIntoView({behavior:'smooth'}); message('読込内容を検証しました。下の確認欄で置き換えを選択してください。');
-  } catch (error) { pendingImport = null; $('import-review').hidden = true; message(`JSON を読み込めません: ${error.message}。現在の記録は保持しています。`,true); }
+    $('import-summary').textContent = t('import_summary', {file: file.name, points: checked.points.length, conditions: checked.conditions.length, measurements: checked.measurements.length});
+    $('import-review').hidden = false; $('import-review').scrollIntoView({behavior:'smooth'}); message('import_checked');
+  } catch (error) { pendingImport = null; $('import-review').hidden = true; message('import_failed', {error: error.message}, true); }
   finally { $('import-json').value = ''; }
 });
 $('confirm-import').addEventListener('click', () => {
   if (!pendingImport || client.busy) return; data = pendingImport; pendingImport = null;
-  selectedPoint = data.points[0]?.id || ''; selectedCondition = data.conditions[0]?.id || ''; $('import-review').hidden = true; render(); message('記録を読み込みました。');
+  selectedPoint = data.points[0]?.id || ''; selectedCondition = data.conditions[0]?.id || ''; $('import-review').hidden = true; render(); message('record_loaded');
 });
 $('cancel-import').addEventListener('click', () => { pendingImport = null; $('import-review').hidden = true; });
 window.addEventListener('beforeunload',event => { if (data.points.length) { event.preventDefault(); event.returnValue = ''; } });
 async function connect() {
-  if (!token) { $('connection').textContent = '閲覧のみ'; $('connection').classList.add('offline'); message('参加用トークンがありません。起動時の URL から開き直してください。保存済み JSON の閲覧はできます。',true); return; }
+  if (!token) { connectionKey = 'view_only'; showConnection(); $('connection').classList.add('offline'); message('no_token', {}, true); return; }
   try {
     const info = await client.request('/api/info'); connected = true;
-    $('connection').textContent = 'PC ホストに接続'; $('connection').classList.add('connected');
+    connectionKey = 'host_connected'; showConnection(); $('connection').classList.add('connected');
     $('join-url').textContent = info.joinUrl; $('join-url').href = info.joinUrl;
     const qr = await client.request('/api/qr',{consume:r => r.blob()});
     $('join-qr').src = URL.createObjectURL(qr); $('join-qr').hidden = false;
-    message('接続しました。間取りを選ぶか、空白の図で現在地をタップしてください。');
+    message('connected');
   } catch (error) {
-    connected = false; $('connection').textContent = 'ホスト未接続'; $('connection').classList.add('offline');
-    message(`PC ホストに接続できません: ${error.message}。ホスト・同じ LAN・ファイアウォールを確認してください。JSON の閲覧はできます。`,true);
+    connected = false; connectionKey = 'host_missing'; showConnection(); $('connection').classList.add('offline');
+    message('host_unreachable', {error: error.message}, true);
   } finally { setBusy(false); }
 }
-render(); traffic(); connect();
+applyText(); render(); traffic(); connect();

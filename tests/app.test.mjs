@@ -17,15 +17,16 @@ class Element {
   remove() {}
 }
 let instance = 0;
-async function app(t) {
+async function app(t, search = '?lang=ja') {
   const originals = new Map(['document','window','location'].map(k => [k,Object.getOwnPropertyDescriptor(globalThis,k)]));
   const elements = new Map(), downloads = [];
   const get = id => { if (!elements.has(id)) elements.set(id,new Element()); return elements.get(id); };
   get('transfer-size').value = '4194304'; get('repeats').value = '3';
-  globalThis.document = {getElementById:get, body:new Element(), addEventListener() {},
+  globalThis.document = {getElementById:get, body:new Element(), documentElement:new Element('html'), addEventListener() {},
+    querySelectorAll() { return []; },
     createElement(tag) { const element = new Element(tag); if (tag === 'a') element.click = () => downloads.push(element); return element; }};
   globalThis.window = {addEventListener() {}, confirm:() => true};
-  globalThis.location = {hash:''};
+  globalThis.location = {hash:'', search};
   t.after(() => {
     for (const [key,descriptor] of originals) {
       if (descriptor) Object.defineProperty(globalThis,key,descriptor); else delete globalThis[key];
@@ -57,6 +58,24 @@ async function exportData(ui) {
   assert.equal(link.download,'roomping.json');
   return await (await fetch(link.href)).text();
 }
+test('?lang=en renders the interface and new data in English', async t => {
+  const ui=await app(t,'?lang=en');
+  assert.equal(ui.get('lang').textContent,'日本語');
+  assert.equal(ui.get('point-count').textContent,'0 spots');
+  assert.match(ui.get('traffic').textContent,/^Traffic: 24 MiB in total/);
+  assert.equal(ui.get('condition-select').children[0].textContent,'Before moving the router');
+  ui.get('condition-name').value='';
+  await ui.get('add-condition').dispatch('click');
+  assert.equal(ui.get('status').textContent,'Enter a condition name.');
+});
+test('the language toggle redraws the current message', async t => {
+  const ui=await app(t,'?lang=en');
+  await ui.get('add-condition').dispatch('click');
+  await ui.get('lang').dispatch('click');
+  assert.equal(ui.get('status').textContent,'条件名を入力してください。');
+  assert.equal(ui.get('lang').textContent,'English');
+  assert.equal(ui.get('point-count').textContent,'0 地点');
+});
 test('adding a second condition compares against it instead of the same condition', async t => {
   const ui=await app(t);
   const before=ui.get('before-condition').value;

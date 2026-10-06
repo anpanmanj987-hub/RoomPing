@@ -2,6 +2,10 @@
 
 This page separates what has been observed in real browsers and on real machines from what is only covered by automated tests.
 
+## English interface — 2026-10-06 (0.1.0a4)
+
+Headless Edge 154 on Windows 11: imported `docs/sample-roomping.en.json` and `docs/sample-roomping.json`, selected the bedroom and read the comparison in English and Japanese. In English no Japanese text remained apart from the toggle and the record's own data; no script errors. The toggle switched the page in place and a reload without `?lang` kept the choice. 25 Python and 31 JavaScript tests pass.
+
 ## Windows check — 2026-10-06 (0.1.0a3)
 
 Environment: Windows 11 (build 26200), Python 3.14.8, Node 24.21.0, Microsoft Edge 154 (headless, driven over the DevTools protocol). PC and browser on the same machine over loopback.

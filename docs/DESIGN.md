@@ -8,6 +8,10 @@ A Python package with bundled static assets. The only runtime dependency is `qrc
 
 `metrics.mjs` owns calculations, strict schema validation, comparison and CSV generation. `measurement.mjs` owns the sequential HTTP run and timers. `app.js` owns the Japanese browser interface, floorplan image decoding, point selection, conditions and file exchange. Files stay in browser memory until exported; there is no database, storage backend, telemetry, CDN, service worker, or synthetic/demo measurement mode.
 
+## Languages
+
+`i18n.mjs` holds every interface string as a Japanese/English pair and exports `t()`. The module defaults to Japanese so the calculation modules behave the same in Node tests; `app.js` sets the language at startup from `?lang=`, a remembered choice, or the first `ja`/`en` entry of `navigator.languages`, and the toggle redraws the page in place, including the current status message. Requests carry `Accept-Language`, and the host translates its error replies to Japanese only when asked.
+
 ## Measurement contract
 
 Warm up once, measure seven small HTTP round trips, download one or three binary bodies, then upload one or three bounded Blob bodies. Use `performance.now()` immediately before each fetch and after consuming its complete response. The download reader sums `Uint8Array.byteLength` through end-of-body and checks the expected length. The host acknowledges upload bytes only after reading the declared complete body. Payload generation occurs outside timed transfers.

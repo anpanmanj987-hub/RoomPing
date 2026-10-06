@@ -20,6 +20,7 @@
 - **条件を変えて比較**：「ルーター移動前」「中継機を追加」などの条件ごとに同じ地点を測り、ダウンロード・アップロード・応答時間の差を表示します。
 - **測った場所だけを表示**：測っていない場所を推測で塗るヒートマップは作りません。
 - **スマホにアプリ不要**：ブラウザだけで動きます。PC側の依存パッケージは qrcode だけです。
+- **日本語と英語に対応**：画面はブラウザの言語に合わせて切り替わります。右上のボタンでいつでも変更できます。
 - **データは手元に**：間取りと結果はブラウザの中だけで扱い、JSON で保存・読み込みできます。CSV でも書き出せます。外部サービスには何も送りません。
 
 ## クイックスタート
@@ -29,7 +30,7 @@ Python 3.10 以上が必要です（Windows・macOS・Linux）。
 ```sh
 python -m venv roomping-env
 # Windows: roomping-env\Scripts\activate   macOS/Linux: source roomping-env/bin/activate
-python -m pip install https://github.com/anpanmanj987-hub/RoomPing/archive/refs/tags/v0.1.0a3.zip
+python -m pip install https://github.com/anpanmanj987-hub/RoomPing/archive/refs/tags/v0.1.0a4.zip
 python -m roomping --host 0.0.0.0 --advertise 192.168.1.20
 ```
 
@@ -62,7 +63,7 @@ python -m roomping --host 0.0.0.0 --advertise 192.168.1.20
 
 ## 動作確認の状況
 
-- **自動テスト**：Python 21件、JavaScript 24件。GitHub Actions で Python 3.10 / 3.12 / 3.14 と Node 24 で実行しています。
+- **自動テスト**：Python 25件、JavaScript 31件。GitHub Actions で Python 3.10 / 3.12 / 3.14 と Node 24 で実行しています。
 - **Windows**：2026年10月6日に、Windows 11 の Python 3.14.8・Node 24 で全テストが通ることと、Edge で実際に測定・条件追加・JSON読み込みができることを確認しました（PC単体のループバック接続）。
 - **未確認**：実際のスマートフォンとWi-Fiでの測定、モバイルブラウザごとの違い、JSON/CSVの保存ダイアログ。
 

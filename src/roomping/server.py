@@ -25,7 +25,36 @@ ASSETS = {"/": ("index.html", "text/html; charset=utf-8"),
           "/style.css": ("style.css", "text/css; charset=utf-8"),
           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
           "/metrics.mjs": ("metrics.mjs", "text/javascript; charset=utf-8"),
-          "/measurement.mjs": ("measurement.mjs", "text/javascript; charset=utf-8")}
+          "/measurement.mjs": ("measurement.mjs", "text/javascript; charset=utf-8"),
+          "/i18n.mjs": ("i18n.mjs", "text/javascript; charset=utf-8")}
+# Error replies are English unless the page asks for Japanese with Accept-Language.
+JAPANESE = {
+    "Host is not allowed": "このHostからの接続は許可されていません",
+    "Open the join URL from this host": "このホストの参加URLから開いてください",
+    "Origin is not allowed": "このOriginからの操作は許可されていません",
+    "Start a measurement run first": "先に測定を開始してください",
+    "Another transfer is running": "別の転送を実行中です",
+    "Relative request path required": "相対パスで要求してください",
+    "Not found": "見つかりません",
+    "Invalid transfer byte count": "転送バイト数が不正です",
+    "A single Content-Length and no Transfer-Encoding are required": "Content-Lengthを1つだけ指定し、Transfer-Encodingは使わないでください",
+    "Upload is too large": "アップロードが大きすぎます",
+    "Empty request required": "本文のない要求が必要です",
+    "Another measurement is running": "別の測定を実行中です",
+    "Nonempty upload required": "空でないアップロードが必要です",
+    "Upload timed out": "アップロードが時間切れになりました",
+    "Upload body is incomplete": "アップロードの本文が不完全です",
+    "Cross-origin access is disabled": "別のオリジンからのアクセスは無効です",
+}
+
+
+def prefers_japanese(header):
+    """True when the first ja/en tag of an Accept-Language header is Japanese."""
+    for part in (header or "").split(","):
+        tag = part.split(";")[0].strip().lower()
+        if tag.startswith(("ja", "en")):
+            return tag.startswith("ja")
+    return False
 
 
 class RoomPingServer(ThreadingHTTPServer):
@@ -131,6 +160,8 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(status, json.dumps(value, separators=(",", ":")).encode("utf-8"))
 
     def error(self, status, message):
+        if prefers_japanese(self.headers.get("Accept-Language")):
+            message = JAPANESE.get(message, message)
         self.json_reply(status, {"error": message})
 
     def one_header(self, name):

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0a4 — 2026-10-06
+
+- English interface. The page follows the browser language (Japanese when it comes first, English otherwise), with a toggle that is remembered and a `?lang=ja|en` override. Validation and measurement errors are translated too, and the host's error replies follow the page's `Accept-Language`.
+- New datasets start with a blank plan and a first condition named in the interface language.
+- Add `docs/sample-roomping.en.json`, the English version of the sample record.
+- Tests check that both languages define the same keys, that every key used by the page and modules exists, and how the language is chosen.
+
 ## 0.1.0a3 — 2026-10-06
 
 - Fix: after adding a second condition, the comparison kept both selectors on the first condition and showed nothing until changed by hand. "After" now defaults to the condition being measured whenever both selectors would match.

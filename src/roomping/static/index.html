@@ -2,38 +2,38 @@
 <html lang="ja">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#133d35"><title>RoomPing · 家の通信を、地点で比較</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
 <body>
-<header class="top"><a href="/" class="brand" aria-label="RoomPing ホーム"><span class="logo">R</span>RoomPing<span class="alpha">ALPHA</span></a><span id="connection" class="badge">接続を確認中</span></header>
+<header class="top"><a href="/" class="brand" aria-label="RoomPing ホーム" data-i18n-attr="aria-label:home"><span class="logo">R</span>RoomPing<span class="alpha">ALPHA</span></a><div class="top-actions"><button id="lang" class="lang-toggle" type="button">English</button><span id="connection" class="badge">接続を確認中</span></div></header>
 <main>
-<section class="intro"><p class="eyebrow">YOUR HOME, POINT BY POINT</p><h1>家の通信を、<br class="mobile">地点で比べる。</h1><p>間取りをタップして、PC ↔ スマートフォンの通信を実測。<br>測った場所だけを記録し、条件を変えて比べられます。</p><div class="notice">LAN の HTTP 転送速度・往復応答時間を測ります。Wi-Fi の電波強度やインターネット回線速度ではありません。</div></section>
+<section class="intro"><p class="eyebrow">YOUR HOME, POINT BY POINT</p><h1><span data-i18n="hero_1">家の通信を、</span><br class="mobile"><span data-i18n="hero_2">地点で比べる。</span></h1><p><span data-i18n="intro_1">間取りをタップして、PC ↔ スマートフォンの通信を実測。</span><br><span data-i18n="intro_2">測った場所だけを記録し、条件を変えて比べられます。</span></p><div class="notice" data-i18n="notice">LAN の HTTP 転送速度・往復応答時間を測ります。Wi-Fi の電波強度やインターネット回線速度ではありません。</div></section>
 <div id="status" class="status" role="status" aria-live="polite">起動時に表示された URL から参加してください。</div>
 <div class="workspace">
-<section class="card map-card"><div class="section-heading"><div><span class="step">01</span><h2>測る場所</h2></div><span id="point-count" class="muted">0 地点</span></div>
-<div class="toolbar"><label class="button secondary" for="floorplan-file">間取り画像を選ぶ<input type="file" id="floorplan-file" accept="image/png,image/jpeg,image/webp" hidden></label><button id="blank-plan" class="quiet">空白の図にする</button></div>
-<p class="hint">図をタップして地点を追加。既存の丸を選ぶと、同じ地点で再測定できます。</p>
-<div id="map" class="map blank" aria-label="間取りと測定地点" tabindex="0"><img id="floorplan-image" alt="選択した間取り" hidden><div id="markers"></div><div id="empty-map" class="empty-map"><span class="crosshair">＋</span><p>現在地をタップ</p><small>未測定の場所には値を表示しません</small></div></div>
-<div class="point-editor"><label>地点名<input id="point-name" maxlength="80" placeholder="例: リビングの窓際" disabled></label><p id="coordinates" class="muted">まだ地点を選んでいません</p></div>
-<label class="visually-hidden" for="point-select">地点を選ぶ</label><select id="point-select"><option value="">地点を選ぶ</option></select>
+<section class="card map-card"><div class="section-heading"><div><span class="step">01</span><h2 data-i18n="where_to_measure">測る場所</h2></div><span id="point-count" class="muted">0 地点</span></div>
+<div class="toolbar"><label class="button secondary" for="floorplan-file"><span data-i18n="choose_floorplan">間取り画像を選ぶ</span><input type="file" id="floorplan-file" accept="image/png,image/jpeg,image/webp" hidden></label><button id="blank-plan" class="quiet" data-i18n="blank_plan">空白の図にする</button></div>
+<p class="hint" data-i18n="map_hint">図をタップして地点を追加。既存の丸を選ぶと、同じ地点で再測定できます。</p>
+<div id="map" class="map blank" aria-label="間取りと測定地点" data-i18n-attr="aria-label:map_label" tabindex="0"><img id="floorplan-image" alt="選択した間取り" data-i18n-attr="alt:floorplan_alt" hidden><div id="markers"></div><div id="empty-map" class="empty-map"><span class="crosshair">＋</span><p data-i18n="tap_here">現在地をタップ</p><small data-i18n="no_guessing">未測定の場所には値を表示しません</small></div></div>
+<div class="point-editor"><label><span data-i18n="spot_name">地点名</span><input id="point-name" maxlength="80" placeholder="例: リビングの窓際" data-i18n-attr="placeholder:spot_placeholder" disabled></label><p id="coordinates" class="muted">まだ地点を選んでいません</p></div>
+<label class="visually-hidden" for="point-select" data-i18n="choose_spot">地点を選ぶ</label><select id="point-select"><option value="">地点を選ぶ</option></select>
 </section>
 <aside class="side">
-<section class="card"><div class="section-heading"><div><span class="step">02</span><h2>条件と測定</h2></div></div>
-<label>測定条件<select id="condition-select"></select></label>
-<div class="inline"><input id="condition-name" maxlength="80" placeholder="例: ルーター移動後" aria-label="新しい条件名"><button id="add-condition" class="secondary">追加</button></div>
-<label>この条件のメモ<textarea id="condition-notes" maxlength="1000" rows="2" placeholder="PC有線、5 GHz、端末・向き、ルーター位置など"></textarea></label>
-<div class="settings"><label>1 回の転送量<select id="transfer-size"><option value="1048576">1 MiB · 軽い計測</option><option value="4194304" selected>4 MiB · 標準</option><option value="16777216">16 MiB · 速い LAN 向け</option></select></label><label>繰り返し<select id="repeats"><option value="1">1 回</option><option value="3" selected>3 回</option></select></label></div>
+<section class="card"><div class="section-heading"><div><span class="step">02</span><h2 data-i18n="conditions_heading">条件と測定</h2></div></div>
+<label><span data-i18n="condition">測定条件</span><select id="condition-select"></select></label>
+<div class="inline"><input id="condition-name" maxlength="80" placeholder="例: ルーター移動後" aria-label="新しい条件名" data-i18n-attr="placeholder:condition_placeholder;aria-label:new_condition"><button id="add-condition" class="secondary" data-i18n="add">追加</button></div>
+<label><span data-i18n="condition_notes">この条件のメモ</span><textarea id="condition-notes" maxlength="1000" rows="2" placeholder="PC有線、5 GHz、端末・向き、ルーター位置など" data-i18n-attr="placeholder:notes_placeholder"></textarea></label>
+<div class="settings"><label><span data-i18n="transfer_size">1 回の転送量</span><select id="transfer-size"><option value="1048576" data-i18n="size_1">1 MiB · 軽い計測</option><option value="4194304" selected data-i18n="size_4">4 MiB · 標準</option><option value="16777216" data-i18n="size_16">16 MiB · 速い LAN 向け</option></select></label><label><span data-i18n="repeats">繰り返し</span><select id="repeats"><option value="1" data-i18n="repeat_1">1 回</option><option value="3" selected data-i18n="repeat_3">3 回</option></select></label></div>
 <p id="traffic" class="hint">転送量: 合計 24 MiB。往復応答は 7 回測定します。</p>
-<button id="measure" class="primary" disabled>この地点で測定する <span>↗</span></button><button id="cancel" class="danger" hidden>測定を中断</button>
+<button id="measure" class="primary" disabled><span class="label" data-i18n="measure">この地点で測定する</span> <span>↗</span></button><button id="cancel" class="danger" hidden data-i18n="cancel_measurement">測定を中断</button>
 <div id="progress" class="progress" hidden><div></div><p id="progress-text"></p></div>
-<p class="hint">PC は有線 LAN を推奨。スマートフォンは同じ LAN に接続し、測定中は画面を開いたままにしてください。</p>
+<p class="hint" data-i18n="measure_hint">PC は有線 LAN を推奨。スマートフォンは同じ LAN に接続し、測定中は画面を開いたままにしてください。</p>
 </section>
-<section class="card join-card"><details><summary>スマートフォンを接続 <span>＋</span></summary><p class="hint">PC に表示されたこの QR を、スマートフォンのカメラで読み取ります。</p><img id="join-qr" alt="このホストに参加する QR コード" hidden><a id="join-url"></a><p class="hint">URL には参加用トークンが含まれます。信頼できる相手だけに共有してください。</p></details></section>
+<section class="card join-card"><details><summary><span class="label" data-i18n="connect_phone">スマートフォンを接続</span> <span>＋</span></summary><p class="hint" data-i18n="scan_qr">PC に表示されたこの QR を、スマートフォンのカメラで読み取ります。</p><img id="join-qr" alt="このホストに参加する QR コード" data-i18n-attr="alt:qr_alt" hidden><a id="join-url"></a><p class="hint" data-i18n="token_warning">URL には参加用トークンが含まれます。信頼できる相手だけに共有してください。</p></details></section>
 </aside>
 </div>
-<section class="card results-card"><div class="section-heading"><div><span class="step">03</span><h2>地点の結果</h2></div><span id="measurement-count" class="muted">0 回の実測</span></div>
+<section class="card results-card"><div class="section-heading"><div><span class="step">03</span><h2 data-i18n="results_heading">地点の結果</h2></div><span id="measurement-count" class="muted">0 回の実測</span></div>
 <div id="results-empty" class="empty-results">地点を選択すると、条件ごとの実測結果を表示します。</div><div id="results"></div>
-<div class="comparison"><h3>同じ地点の条件比較</h3><div class="compare-controls"><label>変更前<select id="before-condition"></select></label><span>→</span><label>変更後<select id="after-condition"></select></label></div><p id="comparison-result" class="hint">両方の条件で同じ地点を測ると差を表示します。</p></div>
+<div class="comparison"><h3 data-i18n="compare_heading">同じ地点の条件比較</h3><div class="compare-controls"><label><span data-i18n="before">変更前</span><select id="before-condition"></select></label><span>→</span><label><span data-i18n="after">変更後</span><select id="after-condition"></select></label></div><p id="comparison-result" class="hint">両方の条件で同じ地点を測ると差を表示します。</p></div>
 </section>
-<section class="card save-card"><div><h2>記録を手元に残す</h2><p class="hint">間取りと結果はこのブラウザ内にあります。ページを閉じる前に JSON で保存してください。</p></div><div class="toolbar"><button id="export-json" class="secondary">JSON を保存</button><label class="button secondary" for="import-json">JSON を読み込む<input type="file" id="import-json" accept="application/json,.json" hidden></label><button id="export-csv" class="secondary">CSV を出力</button></div></section>
-<div id="import-review" class="card import-review" hidden><h2>読込内容を確認</h2><p id="import-summary"></p><p class="hint">読み込むと現在の間取り・地点・記録を置き換えます。必要なら先に JSON を保存してください。</p><button id="confirm-import" class="primary">確認して置き換える</button><button id="cancel-import" class="quiet">読込をやめる</button></div>
-<footer><span>RoomPing</span><span>測定した地点のみ。補間なし。外部サービスへの送信なし。</span></footer>
+<section class="card save-card"><div><h2 data-i18n="keep_record">記録を手元に残す</h2><p class="hint" data-i18n="keep_hint">間取りと結果はこのブラウザ内にあります。ページを閉じる前に JSON で保存してください。</p></div><div class="toolbar"><button id="export-json" class="secondary" data-i18n="save_json">JSON を保存</button><label class="button secondary" for="import-json"><span data-i18n="load_json">JSON を読み込む</span><input type="file" id="import-json" accept="application/json,.json" hidden></label><button id="export-csv" class="secondary" data-i18n="export_csv">CSV を出力</button></div></section>
+<div id="import-review" class="card import-review" hidden><h2 data-i18n="review_heading">読込内容を確認</h2><p id="import-summary"></p><p class="hint" data-i18n="review_hint">読み込むと現在の間取り・地点・記録を置き換えます。必要なら先に JSON を保存してください。</p><button id="confirm-import" class="primary" data-i18n="confirm_replace">確認して置き換える</button><button id="cancel-import" class="quiet" data-i18n="cancel_import">読込をやめる</button></div>
+<footer><span>RoomPing</span><span data-i18n="footer_note">測定した地点のみ。補間なし。外部サービスへの送信なし。</span></footer>
 </main>
 </body></html>

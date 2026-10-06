@@ -10,9 +10,9 @@
 
 [日本語 README](README.md)
 
-![Per-spot results on a floorplan and a before/after comparison (phone view on the right)](docs/images/roomping.png)
+![Per-spot results on a floorplan and a before/after comparison (phone view on the right)](docs/images/roomping.en.png)
 
-<sub>The screenshot shows the bundled sample record [`docs/sample-roomping.json`](docs/sample-roomping.json); its values are illustrative, not measured. The interface is in Japanese.</sub>
+<sub>The screenshot shows the bundled sample record [`docs/sample-roomping.en.json`](docs/sample-roomping.en.json); its values are illustrative, not measured.</sub>
 
 ## Features
 
@@ -20,6 +20,7 @@
 - **Before/after comparisons**: measure the same spot under named conditions such as "before moving the router" or "mesh node added" and see the download, upload and latency deltas.
 - **Only what you measured**: no interpolated heatmaps of places you never visited.
 - **No phone app**: everything runs in the phone's browser. The PC side depends only on `qrcode`.
+- **English and Japanese**: the interface follows your browser language; switch any time with the button at the top right.
 - **Your data stays with you**: floorplans and results live in the browser and are saved as JSON (CSV export too). Nothing is sent to external services.
 
 ## Quick start
@@ -29,15 +30,15 @@ Requires Python 3.10 or newer on Windows, macOS or Linux.
 ```sh
 python -m venv roomping-env
 # Windows: roomping-env\Scripts\activate   macOS/Linux: source roomping-env/bin/activate
-python -m pip install https://github.com/anpanmanj987-hub/RoomPing/archive/refs/tags/v0.1.0a3.zip
+python -m pip install https://github.com/anpanmanj987-hub/RoomPing/archive/refs/tags/v0.1.0a4.zip
 python -m roomping --host 0.0.0.0 --advertise 192.168.1.20
 ```
 
-Replace `192.168.1.20` with your PC's LAN IPv4 address (`ipconfig` on Windows, `ipconfig getifaddr en0` on macOS). Open the printed join URL on the PC, expand "スマートフォンを接続" (connect a phone) and scan the QR code. `Ctrl+C` stops the host.
+Replace `192.168.1.20` with your PC's LAN IPv4 address (`ipconfig` on Windows, `ipconfig getifaddr en0` on macOS). Open the printed join URL on the PC, expand "Connect a phone" and scan the QR code. `Ctrl+C` stops the host.
 
 Without `--host`, RoomPing listens on `127.0.0.1` only, which is useful for trying it on one PC. If your firewall asks, allow incoming connections on private networks only.
 
-To explore the interface first, open the join URL and import [`docs/sample-roomping.json`](docs/sample-roomping.json) with "JSON を読み込む" (load JSON).
+To explore the interface first, open the join URL and import [`docs/sample-roomping.en.json`](docs/sample-roomping.en.json) with "Load JSON".
 
 ## Measuring
 
@@ -62,7 +63,7 @@ By default RoomPing measures seven HTTP round trips and three 4 MiB transfers in
 
 ## Verification status
 
-- **Automated tests**: 21 Python and 24 JavaScript tests, run by GitHub Actions with Python 3.10, 3.12 and 3.14 and Node 24.
+- **Automated tests**: 25 Python and 31 JavaScript tests, run by GitHub Actions with Python 3.10, 3.12 and 3.14 and Node 24.
 - **Windows**: on 2026-10-06, all tests passed on Windows 11 with Python 3.14.8 and Node 24, and real measurements, adding a condition and importing JSON were exercised in Edge (single PC over loopback).
 - **Not yet verified**: real phones over real Wi-Fi, differences between mobile browsers, and the JSON/CSV save dialogs.
 

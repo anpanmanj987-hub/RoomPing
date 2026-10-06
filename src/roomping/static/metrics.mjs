@@ -1,28 +1,29 @@
 /** Pure dataset boundary and calculation code, shared by browser and Node tests. */
+import {t} from './i18n.mjs';
 export const LIMITS = Object.freeze({points: 500, conditions: 50, measurements: 5000,
   imageBytes: 5 * 1024 * 1024, jsonBytes: 12 * 1024 * 1024, pixels: 16_000_000,
   transferBytes: 16 * 1024 * 1024, samples: 20});
 function fail(message) { throw new Error(message); }
 function object(value, keys, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      Object.keys(value).some(k => !keys.includes(k)) || keys.some(k => !(k in value))) fail(`${name}: 項目が不正です`);
+      Object.keys(value).some(k => !keys.includes(k)) || keys.some(k => !(k in value))) fail(t('v_fields', {name}));
 }
 function number(value, min, max, name) {
-  if (!Number.isFinite(value) || value < min || value > max) fail(`${name}: 数値が範囲外です`);
+  if (!Number.isFinite(value) || value < min || value > max) fail(t('v_number', {name}));
   return value;
 }
 function text(value, max, name, allowEmpty = false) {
-  if (typeof value !== 'string' || value.length > max || (!allowEmpty && !value.trim()) || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(value)) fail(`${name}: 文字列が不正です`);
+  if (typeof value !== 'string' || value.length > max || (!allowEmpty && !value.trim()) || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(value)) fail(t('v_text', {name}));
   return value;
 }
-function id(value) { if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(value)) fail('IDが不正です'); return value; }
+function id(value) { if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(value)) fail(t('v_id')); return value; }
 function list(value, max, name, min = 0) {
-  if (!Array.isArray(value) || value.length < min || value.length > max) fail(`${name}: 件数が不正です`);
+  if (!Array.isArray(value) || value.length < min || value.length > max) fail(t('v_count', {name}));
 }
 export function mbps(bytes, durationMs) {
   number(bytes, 1, Number.MAX_SAFE_INTEGER, 'bytes'); number(durationMs, Number.MIN_VALUE, Number.MAX_SAFE_INTEGER, 'duration');
   const result = bytes * 8 / durationMs / 1000;
-  if (!Number.isFinite(result) || result <= 0) fail('転送速度を計算できません');
+  if (!Number.isFinite(result) || result <= 0) fail(t('v_rate'));
   return result;
 }
 export function median(values) {
@@ -36,7 +37,7 @@ function transferSamples(samples) {
   return samples.map(sample => {
     object(sample, ['bytes', 'durationMs'], 'sample');
     number(sample.bytes, 1, LIMITS.transferBytes, 'bytes');
-    if (!Number.isInteger(sample.bytes)) fail('bytes: 整数が必要です');
+    if (!Number.isInteger(sample.bytes)) fail(t('v_integer'));
     number(sample.durationMs, Number.MIN_VALUE, 15000, 'duration');
     mbps(sample.bytes, sample.durationMs);
     return {bytes: sample.bytes, durationMs: sample.durationMs};
@@ -47,33 +48,33 @@ export function transferRate(samples) {
   return mbps(valid.reduce((n, s) => n + s.bytes, 0), valid.reduce((n, s) => n + s.durationMs, 0));
 }
 export function emptyDataset() {
-  return {version: 1, floorplan: {name: '空白の図', image: null, width: 1000, height: 700},
-    points: [], conditions: [{id: 'condition_initial', name: 'ルーター移動前', notes: ''}], measurements: []};
+  return {version: 1, floorplan: {name: t('blank_plan_name'), image: null, width: 1000, height: 700},
+    points: [], conditions: [{id: 'condition_initial', name: t('default_condition'), notes: ''}], measurements: []};
 }
 export function validateDataset(data) {
   object(data, ['version', 'floorplan', 'points', 'conditions', 'measurements'], 'document');
-  if (data.version !== 1) fail('対応していない保存形式です');
+  if (data.version !== 1) fail(t('v_version'));
   object(data.floorplan, ['name', 'image', 'width', 'height'], 'floorplan');
   const floorplan = data.floorplan;
   text(floorplan.name, 200, 'floorplan name');
   number(floorplan.width, 1, 8192, 'width'); number(floorplan.height, 1, 8192, 'height');
-  if (!Number.isInteger(floorplan.width) || !Number.isInteger(floorplan.height) || floorplan.width * floorplan.height > LIMITS.pixels) fail('画像の画素数が上限を超えています');
+  if (!Number.isInteger(floorplan.width) || !Number.isInteger(floorplan.height) || floorplan.width * floorplan.height > LIMITS.pixels) fail(t('v_pixels'));
   if (floorplan.image !== null) {
     if (typeof floorplan.image !== 'string' || floorplan.image.length > Math.ceil(LIMITS.imageBytes * 4 / 3) + 100 ||
-      !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(floorplan.image)) fail('画像形式が不正です');
+      !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(floorplan.image)) fail(t('v_image'));
     const [header, payload] = floorplan.image.split(',');
-    if (payload.length % 4 !== 0) fail('画像のbase64が不正です');
-    let binary; try { binary = atob(payload); } catch { fail('画像のbase64が不正です'); }
-    if (binary.length > LIMITS.imageBytes) fail('画像の容量が上限を超えています');
+    if (payload.length % 4 !== 0) fail(t('v_base64'));
+    let binary; try { binary = atob(payload); } catch { fail(t('v_base64')); }
+    if (binary.length > LIMITS.imageBytes) fail(t('v_image_bytes'));
     const png = binary.startsWith('\x89PNG\r\n\x1a\n');
     const jpeg = binary.startsWith('\xff\xd8\xff');
     const webp = binary.startsWith('RIFF') && binary.slice(8, 12) === 'WEBP';
-    if (!(header.includes('/png;') ? png : header.includes('/jpeg;') ? jpeg : webp)) fail('画像の宣言と内容が一致しません');
+    if (!(header.includes('/png;') ? png : header.includes('/jpeg;') ? jpeg : webp)) fail(t('v_signature'));
   }
   list(data.points, LIMITS.points, 'points'); list(data.conditions, LIMITS.conditions, 'conditions');
   list(data.measurements, LIMITS.measurements, 'measurements');
   function unique(values) {
-    const ids = new Set(); for (const value of values) { id(value.id); if (ids.has(value.id)) fail('IDが重複しています'); ids.add(value.id); } return ids;
+    const ids = new Set(); for (const value of values) { id(value.id); if (ids.has(value.id)) fail(t('v_duplicate')); ids.add(value.id); } return ids;
   }
   const points = data.points.map(p => {
     object(p, ['id', 'label', 'x', 'y'], 'point');
@@ -87,10 +88,10 @@ export function validateDataset(data) {
   const pointIds = unique(points), conditionIds = unique(conditions);
   const measurements = data.measurements.map(m => {
     object(m, ['id', 'pointId', 'conditionId', 'timestamp', 'latencyMs', 'download', 'upload', 'device', 'mode'], 'measurement');
-    if (!pointIds.has(m.pointId) || !conditionIds.has(m.conditionId)) fail('測定の地点または条件がありません');
-    if (m.mode !== 'measured') fail('実測データのみ読み込めます');
+    if (!pointIds.has(m.pointId) || !conditionIds.has(m.conditionId)) fail(t('v_reference'));
+    if (m.mode !== 'measured') fail(t('v_measured'));
     text(m.timestamp, 40, 'timestamp');
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(m.timestamp) || !Number.isFinite(Date.parse(m.timestamp)) || new Date(m.timestamp).toISOString() !== m.timestamp) fail('測定日時が不正です');
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(m.timestamp) || !Number.isFinite(Date.parse(m.timestamp)) || new Date(m.timestamp).toISOString() !== m.timestamp) fail(t('v_time'));
     text(m.device, 300, 'device'); median(m.latencyMs);
     return {id: id(m.id), pointId: m.pointId, conditionId: m.conditionId, timestamp: m.timestamp,
       latencyMs: [...m.latencyMs], download: transferSamples(m.download), upload: transferSamples(m.upload), device: m.device, mode: 'measured'};
@@ -99,7 +100,7 @@ export function validateDataset(data) {
   const valid = {version: 1, floorplan: {...floorplan}, points, conditions, measurements};
   // Every accepted state must fit the same UTF-8 boundary as its JSON import.
   if (new TextEncoder().encode(JSON.stringify(valid)).byteLength > LIMITS.jsonBytes)
-    fail('記録全体の JSON 容量が 12 MiB を超えています。現在の記録を保存し、新しい図で測定してください');
+    fail(t('v_capacity'));
   return valid;
 }
 export function toJSON(data) { return JSON.stringify(validateDataset(data)); }
