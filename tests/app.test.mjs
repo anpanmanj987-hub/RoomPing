@@ -57,6 +57,16 @@ async function exportData(ui) {
   assert.equal(link.download,'roomping.json');
   return await (await fetch(link.href)).text();
 }
+test('adding a second condition compares against it instead of the same condition', async t => {
+  const ui=await app(t);
+  const before=ui.get('before-condition').value;
+  assert.equal(ui.get('after-condition').value,before);
+  ui.get('condition-name').value='中継機を追加';
+  await ui.get('add-condition').dispatch('click');
+  assert.equal(ui.get('before-condition').value,before);
+  assert.equal(ui.get('after-condition').value,ui.get('condition-select').value);
+  assert.notEqual(ui.get('after-condition').value,before);
+});
 test('JSON save handler generates a lossless file inside the import limit', async t => {
   const ui=await app(t), data=dataset();
   await importData(ui,data);

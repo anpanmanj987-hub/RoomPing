@@ -52,6 +52,12 @@ class HttpTests(unittest.TestCase):
     def test_authentication_required(self):
         self.assertEqual(self.request("GET", "/api/ping", headers={"X-RoomPing-Token": ""})[0], 401)
 
+    def test_rejected_upload_reply_is_not_reset(self):
+        # Windows resets a socket closed with unread data, hiding the reply.
+        for _ in range(10):
+            status = self.request("POST", "/api/upload", b"x" * 65536, {"X-RoomPing-Token": "old"})[0]
+            self.assertEqual(status, 401)
+
     def test_wrong_host_rejected(self):
         self.assertEqual(self.request("GET", "/api/ping", headers={"Host": "attacker.example"})[0], 403)
 

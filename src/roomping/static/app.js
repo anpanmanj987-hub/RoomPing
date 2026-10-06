@@ -54,8 +54,14 @@ function render() {
   }
   $('condition-select').value = selectedCondition;
   $('condition-notes').value = condition()?.notes || '';
-  $('before-condition').value = data.conditions.some(c => c.id === before) ? before : data.conditions[0]?.id || '';
-  $('after-condition').value = data.conditions.some(c => c.id === after) ? after : data.conditions[1]?.id || data.conditions[0]?.id || '';
+  const known = id => data.conditions.some(c => c.id === id);
+  const beforeId = known(before) ? before : data.conditions[0]?.id || '';
+  // A pair of identical conditions compares nothing, for example right after adding a
+  // second condition: default "after" to the condition being measured instead.
+  const afterId = known(after) && after !== beforeId ? after
+    : [selectedCondition, ...data.conditions.map(c => c.id)].find(id => known(id) && id !== beforeId) || beforeId;
+  $('before-condition').value = beforeId;
+  $('after-condition').value = afterId;
   renderResults(); setBusy(client.busy);
 }
 function renderResults() {

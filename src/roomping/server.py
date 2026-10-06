@@ -20,6 +20,7 @@ MAX_TRANSFER_BYTES = 16 * 1024 * 1024
 CHUNK_BYTES = 64 * 1024
 REQUEST_SECONDS = 15
 RUN_SECONDS = 120
+DRAIN_SECONDS = 2
 ASSETS = {"/": ("index.html", "text/html; charset=utf-8"),
           "/style.css": ("style.css", "text/css; charset=utf-8"),
           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -81,6 +82,36 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         # Never log request URLs, headers, tokens or floorplan information.
         return
+
+    def parse_request(self):
+        ok = super().parse_request()
+        if not ok:
+            self.unread = 0
+        elif self.headers.get_all("Transfer-Encoding"):
+            self.unread = CHUNK_BYTES  # Refused, but drop what has already arrived.
+        else:
+            self.unread = self.content_length() or 0
+        return ok
+
+    def finish(self):
+        # Rejections reply before reading the body. Closing a socket with unread data
+        # makes Windows reset the connection, and the browser then reports a network
+        # failure instead of the reply, so drop a bounded remainder first.
+        try:
+            if getattr(self, "unread", 0) and not self.wfile.closed:
+                self.wfile.flush()
+                deadline = time.monotonic() + DRAIN_SECONDS
+                remaining = min(self.unread, MAX_TRANSFER_BYTES + CHUNK_BYTES)
+                while remaining > 0 and time.monotonic() < deadline:
+                    self.connection.settimeout(max(0.01, deadline - time.monotonic()))
+                    chunk = self.rfile.read1(min(CHUNK_BYTES, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+        except OSError:
+            pass
+        finally:
+            super().finish()
 
     def reply(self, status, body=b"", content_type="application/json; charset=utf-8"):
         self.close_connection = True
@@ -254,6 +285,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.error(400, "Nonempty upload required")
         if not self.admit_transfer():
             return
+        self.unread = 0  # The loop below owns the body, including slow or broken peers.
         try:
             received = 0
             deadline = time.monotonic() + REQUEST_SECONDS

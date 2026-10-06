@@ -1,6 +1,6 @@
 # RoomPing design
 
-Version: 0.1.0a2. A standalone Python package with bundled static assets and no dependency on sibling projects.
+A Python package with bundled static assets. The only runtime dependency is `qrcode`.
 
 ## Architecture
 
@@ -26,7 +26,7 @@ Upload reads use buffered `read1`, returning after available progress so the han
 
 Default binding is 127.0.0.1:8767. Wildcard binding requires a supplied advertised IPv4. A per-launch `secrets.token_urlsafe(32)` token is included in the join URL fragment and sent in `X-RoomPing-Token`; request logging is disabled. QR and info routes require the token. The page itself may be viewed without a token, but measurement remains unavailable.
 
-Host must exactly match an allowed address and port. POST API requests must also have an exact same-origin Origin. Multiple sensitive headers, unknown transfer encoding, invalid lengths and excessive payloads are rejected. There is no permissive CORS. Fixed static paths prevent arbitrary filesystem serving. A global run lease rejects a second run; a nonblocking transfer lock rejects overlapping transfer requests, including requests with the same run ID. Idle run leases expire after 120 seconds. At most sixteen request workers are active.
+Host must exactly match an allowed address and port. POST API requests must also have an exact same-origin Origin. Multiple sensitive headers, unknown transfer encoding, invalid lengths and excessive payloads are rejected. There is no permissive CORS. Fixed static paths prevent arbitrary filesystem serving. A global run lease rejects a second run; a nonblocking transfer lock rejects overlapping transfer requests, including requests with the same run ID. Idle run leases expire after 120 seconds. At most sixteen request workers are active. A request rejected before its body is read still has the body discarded (bounded to the transfer limit and two seconds) before the socket closes; otherwise Windows resets the connection and the browser reports a network failure instead of the error reply.
 
 Run start, run end and transfer admission share the state lock. Ending a run validates ownership and clears it in one critical section. Transfer admission validates current ownership and acquires the nonblocking transfer slot before releasing the state lock. A delayed old request cannot erase a new lease or reserve a transfer against a changed owner. Response delivery occurs outside this state lock.
 
@@ -43,7 +43,7 @@ Top-level keys: `version`, `floorplan`, `points`, `conditions`, `measurements`.
 
 Limits: 500 points, 50 conditions, 5,000 records, 20 samples per list, 80-character labels, 1,000-character notes, 5 MiB image, 8,192 pixels per dimension, 16 million pixels, 12 MiB imported JSON. The combined dataset must also fit 12 MiB when serialized as compact UTF-8 JSON, including the image and all raw samples. Whichever limit is reached first applies. `validateDataset` enforces this combined boundary before any state assignment; `toJSON` uses the same compact representation without truncation. A rejected append/edit/import retains the prior complete dataset and reports the error. Unknown/missing fields, duplicate IDs, missing references, nonfinite/coerced numbers and invalid sample bounds are rejected. Image data URLs are restricted and signature-checked; the browser additionally decodes and checks actual dimensions before import confirmation. The entire import is validated before it can replace state. All imported labels render via `textContent`.
 
-A point remains the same explicit ID when selected under another condition. Comparison uses the latest recorded result under each selected condition. Neither inferred matching nor spatial interpolation occurs. Changing floorplan clears positions and results only after explicit confirmation.
+A point remains the same explicit ID when selected under another condition. Comparison uses the latest recorded result under each selected condition. When both selectors would name the same condition, for example right after a second condition is added, "after" defaults to the condition currently being measured. Neither inferred matching nor spatial interpolation occurs. Changing floorplan clears positions and results only after explicit confirmation.
 
 CSV exports a quoted, escaped record table and neutralizes formula-leading text. JSON is the lossless exchange format; CSV intentionally alters potentially executable text for spreadsheet viewing.
 

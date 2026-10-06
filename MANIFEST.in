@@ -1,5 +1,5 @@
-include LICENSE README.md README.en.md
+include LICENSE README.md README.en.md CHANGELOG.md
 recursive-include src/roomping/static *.html *.css *.js *.mjs
-recursive-include docs *.md
+recursive-include docs *.md *.png *.json
 recursive-include tests *.py *.mjs
 include .github/workflows/ci.yml
